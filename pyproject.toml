@@ -35,8 +35,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/TheOfficialFurkanNar/qusim"
-Repository = "https://github.com/TheOfficialFurkanNar/qusim"
+Homepage = "https://github.com/furkannar/qusim"
+Repository = "https://github.com/furkannar/qusim"
 
 [tool.setuptools.packages.find]
 include = ["qusim*"]
