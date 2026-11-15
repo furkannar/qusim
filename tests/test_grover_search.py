@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from qusim.grover_search import (
+from qusim_np.grover_search import (
     hadamard_transform, hadamard_matrix_closed_form,
     initialize_uniform_superposition, grover_oracle, diffusion_operator,
     grover_iteration, calculate_theta, calculate_optimal_iterations,

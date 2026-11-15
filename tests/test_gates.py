@@ -2,12 +2,12 @@
 
 import numpy as np
 import pytest
-from qusim.gates import (
+from qusim_np.gates import (
     QuantumGate,
     pauli_x, pauli_y, pauli_z, hadamard, phase_gate, t_gate,
     identity, cnot, swap, controlled_phase, toffoli, rx, ry, rz
 )
-from qusim.config import config
+from qusim_np.config import config
 
 
 class TestRotationGatesValidation:

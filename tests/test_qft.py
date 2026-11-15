@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from qusim.qft import qft_matrix, inverse_qft_matrix, qft_state, inverse_qft_state
+from qusim_np.qft import qft_matrix, inverse_qft_matrix, qft_state, inverse_qft_state
 
 
 class TestQFTMatrix:

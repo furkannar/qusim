@@ -1,5 +1,5 @@
 r"""
-qusim/vqe.py
+qusim_np/vqe.py
 Variational Quantum Eigensolver — Pauli-string Hamiltonians
 
 A Hamiltonian is written as a linear combination of Pauli strings
@@ -29,9 +29,9 @@ Pauli-string conventions:
 
 import numpy as np
 
-from qusim.config import PAULI_I, PAULI_X, PAULI_Y, PAULI_Z
-from qusim.gates import ry, rz, cnot
-from qusim.grover_search import _validate_n
+from qusim_np.config import PAULI_I, PAULI_X, PAULI_Y, PAULI_Z
+from qusim_np.gates import ry, rz, cnot
+from qusim_np.grover_search import _validate_n
 
 _PAULI_MATRICES = {"I": PAULI_I, "X": PAULI_X, "Y": PAULI_Y, "Z": PAULI_Z}
 _PAULI_LABELS = "IXYZ"

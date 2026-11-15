@@ -2,14 +2,14 @@
 
 import numpy as np
 import pytest
-from qusim.config import PAULI_I, PAULI_X, PAULI_Y, PAULI_Z
-from qusim.gates import pauli_x, pauli_y, pauli_z, hadamard
-from qusim.vqe import (
+from qusim_np.config import PAULI_I, PAULI_X, PAULI_Y, PAULI_Z
+from qusim_np.gates import pauli_x, pauli_y, pauli_z, hadamard
+from qusim_np.vqe import (
     pauli_string_matrix, apply_single_qubit, apply_two_qubit,
     apply_pauli_string, pauli_string_expval, hamiltonian, expectation_value,
     hea_param_count, hea_state, vqe_energy, vqe_optimize,
 )
-from qusim.gates import cnot
+from qusim_np.gates import cnot
 
 
 class TestConfigPauliMatrices:

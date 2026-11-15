@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from qusim.deutsch_jozsa import (
+from qusim_np.deutsch_jozsa import (
     deutsch_jozsa_oracle, deutsch_jozsa, deutsch_jozsa_classify, _evaluate_f
 )
 

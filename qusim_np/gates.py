@@ -1,5 +1,5 @@
 """
-qusim/gates.py
+qusim_np/gates.py
 Quantum Gates Implementation
 
 This module implements common quantum gates using numpy matrices.
@@ -32,7 +32,7 @@ For rotation gates, we enforce:
 """
 
 import numpy as np
-from qusim.config import config
+from qusim_np.config import config
 
 class QuantumGate:
     """Base class for quantum gates"""

@@ -1,5 +1,5 @@
 r"""
-qusim/grover_search.py
+qusim_np/grover_search.py
 Quantum Algorithms Implementation
 
 This module implements various quantum algorithms using the custom gates.
@@ -19,7 +19,7 @@ Grover's Search Algorithm:
 """
 
 import numpy as np
-from qusim.gates import hadamard
+from qusim_np.gates import hadamard
 
 
 def _validate_n(n):

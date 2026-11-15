@@ -1,5 +1,5 @@
 r"""
-qusim/deutsch_jozsa.py
+qusim_np/deutsch_jozsa.py
 Deutsch-Jozsa Algorithm
 
 This module implements the Deutsch-Jozsa algorithm using the custom gates.
@@ -18,7 +18,7 @@ Deutsch-Jozsa Algorithm:
 """
 
 import numpy as np
-from qusim.grover_search import (
+from qusim_np.grover_search import (
     _validate_n, hadamard_transform, initialize_uniform_superposition
 )
 

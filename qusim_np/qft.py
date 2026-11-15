@@ -1,5 +1,5 @@
 r"""
-qusim/qft.py
+qusim_np/qft.py
 Quantum Fourier Transform
 
 This module implements the Quantum Fourier Transform (QFT) as an
@@ -23,7 +23,7 @@ Examples:
 """
 
 import numpy as np
-from qusim.grover_search import _validate_n
+from qusim_np.grover_search import _validate_n
 
 
 def qft_matrix(n):
