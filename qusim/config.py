@@ -1,0 +1,46 @@
+r"""
+Quantum Computing Configuration
+
+This module contains constants and configuration values used across
+the quantum computing implementation.
+"""
+
+import numpy as np
+from dataclasses import dataclass
+
+
+@dataclass
+class QuantumConfig:
+    """Configuration constants for quantum computing implementation."""
+    
+    # Mathematical constants
+    SQRT_2: float = np.sqrt(2)
+    INV_SQRT_2: float = 1 / SQRT_2
+    
+    # Quantum gate constants
+    HADAMARD_SCALE: float = INV_SQRT_2
+    
+    # Grover's algorithm constants
+    # These will be computed dynamically based on n and M
+    # N = 2^n (total number of basis states)
+    # M = number of marked solutions
+    
+    # Rotation gate constants
+    # theta parameter for Rx, Ry, Rz gates
+    DEFAULT_ROTATION_ANGLE: float = np.pi / 4
+    
+    # SU(2) constraints
+    # Unitary: U^dagger * U = I
+    # Special Unitary: det(U) = 1
+    SU2_TOLERANCE: float = 1e-10
+
+
+# Global config instance
+config = QuantumConfig()
+
+
+# Single-qubit Pauli matrices (used by VQE Hamiltonians and Pauli strings)
+PAULI_I = np.array([[1, 0], [0, 1]], dtype=complex)
+PAULI_X = np.array([[0, 1], [1, 0]], dtype=complex)
+PAULI_Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+PAULI_Z = np.array([[1, 0], [0, -1]], dtype=complex)
