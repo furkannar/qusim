@@ -9,6 +9,7 @@ well-tested code. Built for learning, teaching, and prototyping.
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Tests](https://github.com/furkannar/qusim-np/actions/workflows/ci.yml/badge.svg)](https://github.com/furkannar/qusim-np/actions/workflows/ci.yml)
+[![Test count](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/furkannar/qusim-np/master/badge.json)](https://github.com/furkannar/qusim-np/actions/workflows/ci.yml)
 
 ---
 
