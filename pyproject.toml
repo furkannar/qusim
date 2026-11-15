@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qusim"
-version = "0.1.0"
+version = "1.0"
 description = "A minimal, readable quantum computing simulator: gates, state-vector algorithms, and VQE"
 readme = "README.md"
 license = {text = "MIT"}
@@ -35,8 +35,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/YOUR-USERNAME/qusim"  # TODO
-Repository = "https://github.com/YOUR-USERNAME/qusim"  # TODO
+Homepage = "https://github.com/TheOfficialFurkanNar/qusim"
+Repository = "https://github.com/TheOfficialFurkanNar/qusim"
 
 [tool.setuptools.packages.find]
 include = ["qusim*"]

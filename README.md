@@ -30,7 +30,7 @@ pip install qusim
 From source:
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/qusim.git  # TODO
+git clone https://github.com/TheOfficialFurkanNar/qusim.git
 cd qusim
 pip install -e .
 ```
