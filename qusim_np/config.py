@@ -44,3 +44,20 @@ PAULI_I = np.array([[1, 0], [0, 1]], dtype=complex)
 PAULI_X = np.array([[0, 1], [1, 0]], dtype=complex)
 PAULI_Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
 PAULI_Z = np.array([[1, 0], [0, -1]], dtype=complex)
+
+
+def sqrt_one_minus_gamma(gamma):
+    r"""
+    Compute sqrt(1 - gamma), the coherence factor of amplitude damping.
+
+    This factor multiplies the off-diagonal elements of a density matrix
+    under the amplitude damping channel and appears in both Kraus
+    operators, so it is factored out here.
+
+    Args:
+        gamma: float in [0, 1] - damping probability
+
+    Returns:
+        float: sqrt(1 - gamma)
+    """
+    return float(np.sqrt(1.0 - gamma))

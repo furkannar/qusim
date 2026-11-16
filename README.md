@@ -1,10 +1,11 @@
 # qusim-np
 
-**A minimal, readable quantum computing simulator in pure NumPy.**
+**A lightweight quantum computing simulator in pure NumPy.**
 
-State-vector gates, textbook quantum algorithms, and a working
-Variational Quantum Eigensolver — in ~1,200 lines of well-documented,
-well-tested code. Built for learning, teaching, and prototyping.
+State-vector gates, textbook quantum algorithms, a working
+Variational Quantum Eigensolver, and noise channels — in ~1,500 lines
+of well-documented, well-tested code. Built for learning, teaching,
+and prototyping.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -20,6 +21,7 @@ well-tested code. Built for learning, teaching, and prototyping.
 | **Gates** | Pauli X/Y/Z, Hadamard, S, T, CNOT, SWAP, CZ, Toffoli, `rx`/`ry`/`rz` rotations |
 | **Algorithms** | Grover search, Deutsch–Jozsa, Quantum Fourier Transform |
 | **VQE** | Pauli-string Hamiltonians, hardware-efficient ansatz, `scipy` optimizer |
+| **Noise models** | Amplitude damping, phase damping/flip, thermal relaxation, depolarizing, random Pauli channels |
 | **Performance** | 1- and 2-qubit gates applied to state vectors in O(n·2ⁿ) — no dense 2ⁿ×2ⁿ matrices in the hot path |
 
 ## Install
@@ -123,6 +125,39 @@ theta = np.zeros(qusim_np.hea_param_count(2, layers=2))
 psi   = qusim_np.hea_state(2, theta, layers=2)
 ```
 
+## Noise models
+
+Standalone quantum channels in `qusim_np.noise_models`, built on the
+general Kraus form
+
+$$\mathcal{E}(\rho) = \sum_k K_k \,\rho\, K_k^\dagger, \qquad
+\sum_k K_k^\dagger K_k = I$$
+
+Each channel accepts a state vector or density matrix and returns a
+density matrix — apply them as you wish, e.g. to model idle time or
+noisy gates in your own experiments.
+
+```python
+import numpy as np
+import qusim_np
+
+# |1> subject to amplitude damping with gamma = 0.3
+rho = qusim_np.to_density_matrix(np.array([0, 1]))
+rho = qusim_np.amplitude_damping(rho, 0.3)
+
+# E(rho) = [[0.3, 0], [0, 0.7]] — excited population decayed by gamma
+print(rho)
+
+# Depolarizing channel: E(rho) = (1-p) rho + (p/2) I
+rho = qusim_np.depolarizing(rho, 0.1, qubit=0)
+
+# Random Pauli channel, probs = (q_I, q_X, q_Y, q_Z)
+rho = qusim_np.random_pauli(rho, (0.9, 0.05, 0.03, 0.02))
+
+# Thermal relaxation over an idle time t (needs T2 <= 2*T1)
+rho = qusim_np.thermal_relaxation(rho, t=1e-6, T1=50e-6, T2=30e-6)
+```
+
 ## Qubit convention
 
 Qubit 0 is the **most significant bit** of the basis-state index:
@@ -137,21 +172,22 @@ same convention as Qiskit and most textbooks.
 
 ```
 qusim_np/
-├── config.py          # constants + Pauli matrices
-├── gates.py           # QuantumGate + gate constructors
-├── grover_search.py   # Hadamard transforms, oracle, diffusion, Grover
-├── deutsch_jozsa.py   # Deutsch-Jozsa algorithm
-├── qft.py             # QFT / inverse QFT
-└── vqe.py             # Pauli strings, Hamiltonians, HEA ansatz, VQE driver
-tests/                 # 178 tests
+├── config.py                # constants + Pauli matrices
+├── gates.py                 # QuantumGate + gate constructors
+├── grover_search.py         # Hadamard transforms, oracle, diffusion, Grover
+├── deutsch_jozsa.py         # Deutsch-Jozsa algorithm
+├── qft.py                   # QFT / inverse QFT
+├── vqe.py                   # Pauli strings, Hamiltonians, HEA ansatz, VQE driver
+└── noise_models/            # Kraus channels: damping, relaxation, Pauli errors
+tests/                       # 260 tests
 ```
 
 ## Limitations
 
-Honest scope notes — this is a teaching/reference simulator:
+Honest scope notes — this is a lightweight quantum simulator:
 
 - **Dense state vectors**: memory is O(2ⁿ); practical limit ~15–20 qubits
-- **No noise model**: pure-state simulation only (no decoherence, no sampling noise)
+- **Standalone noise only**: channels operate on density matrices you manage yourself — no automatic per-gate noise injection or shot-noise sampling in the engine
 - **No circuit API**: you compose gates programmatically, not via a `QuantumCircuit` builder
 - **Classical only**: no real-device or cloud backend integration
 
@@ -162,7 +198,7 @@ For production quantum computing, see [Qiskit](https://www.ibm.com/quantum/qiski
 
 ```bash
 pip install -e .[dev]
-pytest          # 178 tests, ~1s
+pytest          # 260 tests, ~1.5s
 ```
 
 Contributions welcome — see the test suite for conventions.

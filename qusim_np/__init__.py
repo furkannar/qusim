@@ -1,4 +1,4 @@
-"""Quantum computing engine: gates, state-vector simulation, and algorithms."""
+"""Lightweight quantum simulator: gates, state vectors, algorithms, VQE, and noise channels."""
 
 from qusim_np.config import QuantumConfig, config
 from qusim_np.gates import (
@@ -23,6 +23,15 @@ from qusim_np.vqe import (
     apply_pauli_string, pauli_string_expval, hamiltonian, expectation_value,
     hea_param_count, hea_state, vqe_energy, vqe_optimize,
 )
+from qusim_np.noise_models import (
+    to_density_matrix, apply_channel,
+    amplitude_damping_kraus, gamma_from_relaxation, amplitude_damping,
+    phase_damping_kraus, phase_flip_kraus,
+    lambda_from_p, p_from_lambda,
+    phase_damping_from_times, phase_damping, phase_flip, thermal_relaxation,
+    depolarizing_kraus, depolarizing,
+    random_pauli_kraus, random_pauli, sample_pauli, apply_sampled_pauli,
+)
 
 __all__ = [
     "QuantumConfig", "config", "QuantumGate",
@@ -37,4 +46,12 @@ __all__ = [
     "pauli_string_matrix", "apply_single_qubit", "apply_two_qubit",
     "apply_pauli_string", "pauli_string_expval", "hamiltonian", "expectation_value",
     "hea_param_count", "hea_state", "vqe_energy", "vqe_optimize",
+    "to_density_matrix", "apply_channel",
+    "amplitude_damping_kraus", "gamma_from_relaxation", "amplitude_damping",
+    "phase_damping_kraus", "phase_flip_kraus",
+    "lambda_from_p", "p_from_lambda",
+    "phase_damping_from_times", "phase_damping", "phase_flip",
+    "thermal_relaxation",
+    "depolarizing_kraus", "depolarizing",
+    "random_pauli_kraus", "random_pauli", "sample_pauli", "apply_sampled_pauli",
 ]
