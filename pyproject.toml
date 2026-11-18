@@ -4,18 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qusim-np"
-version = "1.1"
-description = "A lightweight quantum computing simulator in pure NumPy: gates, state-vector algorithms, VQE, and noise channels"
+version = "1.2"
+description = "A lightweight quantum simulation package in pure NumPy: matrix-free state-vector algorithms, VQE, noise channels, and shot-noise estimation"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
     {name = "Furkan Nar", email = "furkan_nar4185@outlook.com"},
 ]
-keywords = ["quantum", "quantum-computing", "simulation", "vqe", "grover", "qft", "noise-models"]
+keywords = ["quantum", "quantum-computing", "simulation", "state-vector", "vqe", "grover", "deutsch-jozsa", "qft", "noise-models", "shot-noise"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "Intended Audience :: Education",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

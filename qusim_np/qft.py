@@ -40,8 +40,21 @@ def qft_matrix(n):
     """
     _validate_n(n)
     N = 2 ** n
-    jk = np.outer(np.arange(N), np.arange(N))
+    # omega^{jk} depends only on jk mod N; reducing first keeps the
+    # exp() argument in [0, 2 pi) and avoids precision loss for large jk.
+    jk = np.outer(np.arange(N), np.arange(N)) % N
     return np.exp(2j * np.pi * jk / N) / np.sqrt(N)
+
+
+def _check_power_of_two_state(state):
+    state = np.asarray(state, dtype=complex)
+    if state.ndim != 1:
+        raise ValueError(f"state must be a 1-D vector, got shape {state.shape}")
+    N = state.shape[0]
+    n = int(round(np.log2(N))) if N > 0 else 0
+    if n < 1 or 2 ** n != N:
+        raise ValueError(f"state dimension {N} is not a power of 2 >= 2")
+    return state
 
 
 def inverse_qft_matrix(n):
@@ -69,16 +82,15 @@ def qft_state(state):
     Args:
         state: numpy.ndarray of shape (2^n,) - quantum state amplitudes
 
+    Computed with the FFT identity  y_k = (1/sqrt(N)) sum_j x_j omega^{jk}
+    = numpy.fft.ifft(x, norm="ortho")[k]  in O(N log N) time and O(N)
+    memory, instead of an O(N^2) dense matrix-vector product.
+
     Returns:
         numpy.ndarray: The QFT-transformed state of shape (2^n,)
     """
-    state = np.asarray(state, dtype=complex)
-    N = state.shape[0]
-    n_float = np.log2(N)
-    n = int(round(n_float))
-    if 2 ** n != N:
-        raise ValueError(f"state dimension {N} is not a power of 2")
-    return qft_matrix(n) @ state
+    state = _check_power_of_two_state(state)
+    return np.fft.ifft(state, norm="ortho")
 
 
 def inverse_qft_state(state):
@@ -88,13 +100,10 @@ def inverse_qft_state(state):
     Args:
         state: numpy.ndarray of shape (2^n,) - quantum state amplitudes
 
+    Uses F^dagger x = numpy.fft.fft(x, norm="ortho"), O(N log N).
+
     Returns:
         numpy.ndarray: The inverse-QFT-transformed state of shape (2^n,)
     """
-    state = np.asarray(state, dtype=complex)
-    N = state.shape[0]
-    n_float = np.log2(N)
-    n = int(round(n_float))
-    if 2 ** n != N:
-        raise ValueError(f"state dimension {N} is not a power of 2")
-    return inverse_qft_matrix(n) @ state
+    state = _check_power_of_two_state(state)
+    return np.fft.fft(state, norm="ortho")

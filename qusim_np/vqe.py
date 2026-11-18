@@ -76,11 +76,62 @@ def _normalize_pauli_string(pauli_string):
     return tuple(labels)
 
 
+# ---------------------------------------------------------------------------
+# Bitmask (symplectic) representation of Pauli strings
+# ---------------------------------------------------------------------------
+#
+# Every single-qubit Pauli is X^x Z^z up to a phase:
+#     I = X^0 Z^0,  X = X^1 Z^0,  Z = X^0 Z^1,  Y = i X Z
+# (check: i X Z = i [[0,-1],[1,0]] = [[0,-i],[i,0]] = Y).
+# On a basis state, Z^z|c> = (-1)^{c z}|c> and X^x|c> = |c XOR x>, so an
+# n-qubit Pauli string acts as a signed permutation of basis states:
+#
+#     P|c> = i^{n_Y} (-1)^{popcount(c AND z)} |c XOR x>
+#
+# where x has a 1 on every X/Y qubit, z on every Z/Y qubit, and n_Y counts
+# the Y factors.  Qubit q corresponds to bit (n-1-q) (qubit 0 = MSB).
+# Hence P has exactly one nonzero per column, at row c XOR x: applying P
+# or adding alpha*P into a matrix costs O(2^n) instead of O(4^n)
+# (matrix) or O(n 2^n) (axis-by-axis tensor contraction).
+
+_I_POWERS = (1, 1j, -1, -1j)
+
+
+def _pauli_masks(labels):
+    """Return (x_mask, z_mask, n_y) for a normalized Pauli string."""
+    n = len(labels)
+    x_mask = z_mask = n_y = 0
+    for q, lab in enumerate(labels):
+        bit = 1 << (n - 1 - q)
+        if lab in ("X", "Y"):
+            x_mask |= bit
+        if lab in ("Z", "Y"):
+            z_mask |= bit
+        if lab == "Y":
+            n_y += 1
+    return x_mask, z_mask, n_y
+
+
+def _pauli_column_values(labels):
+    """
+    For P = labels, return (cols, rows, vals) with P[rows[c], cols[c]] = vals[c].
+
+    cols = 0..2^n-1, rows = cols XOR x, vals = i^{n_Y} (-1)^{popcount(c AND z)}.
+    """
+    x_mask, z_mask, n_y = _pauli_masks(labels)
+    cols = np.arange(2 ** len(labels))
+    parity = np.bitwise_count(cols & z_mask) & 1
+    # bitwise_count returns uint8: convert before negating to avoid wraparound
+    vals = _I_POWERS[n_y % 4] * (1.0 - 2.0 * parity)
+    return cols, cols ^ x_mask, vals
+
+
 def _labels_to_matrix(labels):
-    """Build the matrix of a normalized Pauli string via tensor products."""
-    M = _PAULI_MATRICES[labels[0]]
-    for lab in labels[1:]:
-        M = np.kron(M, _PAULI_MATRICES[lab])
+    """Build the dense matrix of a normalized Pauli string, O(2^n) fill."""
+    N = 2 ** len(labels)
+    cols, rows, vals = _pauli_column_values(labels)
+    M = np.zeros((N, N), dtype=complex)
+    M[rows, cols] = vals
     return M
 
 
@@ -195,7 +246,8 @@ def apply_pauli_string(state, pauli_string):
     r"""
     Apply a Pauli string P = \bigotimes_k \sigma_k to a state vector.
 
-    Identity factors are skipped.  Cost is O(n * 2^n).
+    Uses the signed-permutation form P|c> = i^{n_Y} (-1)^{c.z} |c XOR x>,
+    so the cost is O(2^n) vectorized work.
 
     Args:
         state: numpy.ndarray of shape (2^n,) - state amplitudes
@@ -210,10 +262,11 @@ def apply_pauli_string(state, pauli_string):
         raise ValueError(
             f"pauli string length {len(labels)} does not match state dimension 2^{n}"
         )
-    for q, lab in enumerate(labels):
-        if lab != "I":
-            state = apply_single_qubit(state, _PAULI_MATRICES[lab], q)
-    return state
+    # (P psi)[c XOR x] = val[c] psi[c]   (see the bitmask notes above)
+    cols, rows, vals = _pauli_column_values(labels)
+    out = np.empty_like(state)
+    out[rows] = vals * state[cols]
+    return out
 
 
 def pauli_string_expval(state, pauli_string):
@@ -238,10 +291,11 @@ def hamiltonian(coefficients, pauli_strings):
     r"""
     Assemble a Hamiltonian H = sum_i alpha_i * P_i from Pauli strings.
 
-    The Pauli-string matrices are stacked into an array p of shape
-    (m, 2^n, 2^n) and contracted with the coefficient vector:
-
-        H = alpha @ p      (equivalently H = sum_i alpha_i P_i)
+    Mathematically H = alpha @ p with p the stack of Pauli matrices
+    (shape (m, 2^n, 2^n)), but that stack is never built: each P_i has
+    one nonzero per column, so alpha_i P_i is scattered straight into H.
+    Memory is O(4^n) for H itself (instead of O(m 4^n)) and time is
+    O(m 2^n) after allocating H.
 
     Args:
         coefficients: array-like of shape (m,) - real coefficients alpha_i
@@ -268,8 +322,10 @@ def hamiltonian(coefficients, pauli_strings):
         raise ValueError("all Pauli strings in a Hamiltonian must have the same length")
 
     N = 2 ** n
-    P = np.stack([_labels_to_matrix(lab) for lab in labels_list])
-    H = (coeffs @ P.reshape(len(strings), N * N)).reshape(N, N)
+    H = np.zeros((N, N), dtype=complex)
+    for alpha, labels in zip(coeffs, labels_list):
+        cols, rows, vals = _pauli_column_values(labels)
+        H[rows, cols] += alpha * vals
     return H
 
 
@@ -359,6 +415,7 @@ def hea_state(n, theta, layers=1, entanglement="linear"):
 
     state = np.zeros(2 ** n, dtype=complex)
     state[0] = 1.0
+    cnot_matrix = cnot().matrix
 
     for layer in range(layers):
         for q in range(n):
@@ -370,7 +427,7 @@ def hea_state(n, theta, layers=1, entanglement="linear"):
             pairs = [(i, i + 1) for i in range(n - 1)]
         for c, t in pairs:
             if c != t:
-                state = apply_two_qubit(state, cnot().matrix, c, t)
+                state = apply_two_qubit(state, cnot_matrix, c, t)
 
     return state
 

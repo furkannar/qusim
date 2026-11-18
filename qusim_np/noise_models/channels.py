@@ -23,8 +23,6 @@ indices — qubit q sits at axis q on the row side and axis n+q on the
 column side.
 """
 
-import warnings
-
 import numpy as np
 
 from qusim_np.grover_search import _validate_n
@@ -72,13 +70,27 @@ def _apply_1q_to_axis(tensor, U, axis):
 
 
 def _validate_kraus_ops(kraus_ops):
-    """Validate and return a list of 2x2 complex Kraus operators."""
+    r"""
+    Validate and return a list of 2x2 complex Kraus operators.
+
+    Checks the completeness relation sum_k K_k^dagger K_k = I, which is
+    equivalent to the channel being trace-preserving on EVERY input
+    (Tr E(rho) = Tr(rho sum_k K_k^dagger K_k) = Tr(rho) for all rho).
+    Checking the output trace for one particular rho is not enough: a
+    non-TP set can preserve the trace of a specific state by accident.
+    """
     ops = [np.asarray(K, dtype=complex) for K in kraus_ops]
     if not ops:
         raise ValueError("kraus_ops must contain at least one operator")
     for i, K in enumerate(ops):
         if K.shape != (2, 2):
             raise ValueError(f"Kraus operator {i} must have shape (2, 2), got {K.shape}")
+    completeness = sum(K.conj().T @ K for K in ops)
+    if not np.allclose(completeness, np.eye(2), atol=_TRACE_TOL):
+        raise ValueError(
+            "channel is not trace-preserving: "
+            f"sum_k K_k^dagger K_k = {completeness.tolist()} != I"
+        )
     return ops
 
 
@@ -94,9 +106,9 @@ def apply_channel(rho, kraus_ops, qubit=0):
     converted via rho = |psi><psi|.  Because channels generally produce
     mixed states, the return value is always a density matrix.
 
-    The result is checked for trace preservation:
-    |Tr(E(rho)) - Tr(rho)| must be below tolerance, otherwise a warning
-    is emitted and a ValueError is raised.
+    The Kraus operators are checked for completeness,
+    sum_k K_k^dagger K_k = I (trace preservation on every input);
+    an incomplete set raises ValueError.
 
     Args:
         rho: numpy.ndarray - density matrix (2^n, 2^n) or state vector (2^n,)
@@ -122,18 +134,5 @@ def apply_channel(rho, kraus_ops, qubit=0):
         t_k = _apply_1q_to_axis(t_k, K.conj(), n + qubit)
         out += t_k
     out = out.reshape(rho.shape)
-
-    in_trace = np.trace(rho)
-    out_trace = np.trace(out)
-    if not np.isclose(out_trace, in_trace, atol=_TRACE_TOL):
-        warnings.warn(
-            f"channel is not trace-preserving: "
-            f"Tr(E(rho)) = {out_trace}, Tr(rho) = {in_trace}",
-            stacklevel=2,
-        )
-        raise ValueError(
-            f"channel is not trace-preserving: "
-            f"Tr(E(rho)) = {out_trace}, Tr(rho) = {in_trace}"
-        )
 
     return out

@@ -89,11 +89,14 @@ def shots_needed_pauli_std_error(expval, eps):
         eps: float > 0 - target standard error
 
     Returns:
-        int: number of shots (ceil)
+        int: number of shots (ceil), at least 1.  At |<P>| = 1 the
+        outcome is deterministic and one shot determines it exactly.
+        If `expval` is itself an estimate near +/-1, its uncertainty
+        is not captured here - pass a conservative value instead.
     """
     eps = float(eps)
-    if eps <= 0:
-        raise ValueError(f"eps must be positive, got {eps!r}")
+    if not np.isfinite(eps) or eps <= 0:
+        raise ValueError(f"eps must be positive and finite, got {eps!r}")
     p_plus, _ = pauli_outcome_probs(expval)
     sigma2 = 4.0 * p_plus * (1.0 - p_plus)  # = 1 - <P>^2
-    return int(np.ceil(sigma2 / eps ** 2))
+    return max(1, int(np.ceil(sigma2 / eps ** 2)))

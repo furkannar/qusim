@@ -23,7 +23,6 @@ z^2 (CLT) or ln(2/delta) (Hoeffding/Bernstein) factor is included.
 import warnings
 
 import numpy as np
-from scipy.stats import norm
 
 from qusim_np.config import ln_2_over_delta
 
@@ -45,8 +44,11 @@ def gaussian_z(delta):
 
     Examples: delta=0.10 -> ~1.64, 0.05 -> ~1.96, 0.01 -> ~2.58.
     """
+    # Imported lazily: scipy.stats costs ~0.5 s at import time.
+    from scipy.special import ndtri   # inverse standard-normal CDF
+
     _, delta = _validate_eps_delta(1.0, delta)
-    return float(norm.ppf(1.0 - delta / 2.0))
+    return float(ndtri(1.0 - delta / 2.0))
 
 
 def shots_clt(sigma2, eps, delta=None):

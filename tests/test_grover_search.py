@@ -201,8 +201,23 @@ class TestOptimalIterations:
         N = 2**n
         M = len(marked_states)
         k_opt = calculate_optimal_iterations(n, marked_states)
-        expected = (np.pi / 4) * np.sqrt(N / M) - 0.5
-        np.testing.assert_allclose(k_opt, round(expected), atol=1e-10)
+        theta = 2 * np.arcsin(np.sqrt(M / N))
+        expected = np.pi / (2 * theta) - 0.5
+        assert k_opt == round(expected)
+
+    @pytest.mark.parametrize("n,M", [(4, 9), (5, 19), (6, 3), (8, 1), (3, 8), (6, 20)])
+    def test_optimal_iterations_best_at_first_peak(self, n, M):
+        """k_opt is the best integer at the first peak of P(k) = sin^2((2k+1) theta/2)
+        and never worse than the small-angle formula (pi/4) sqrt(N/M) - 1/2."""
+        N = 2 ** n
+        theta = 2 * np.arcsin(np.sqrt(M / N))
+        P = lambda k: np.sin((2 * k + 1) * theta / 2) ** 2
+        k_opt = calculate_optimal_iterations(n, list(range(M)))
+        for k in (k_opt - 1, k_opt + 1):
+            if k >= 0:
+                assert P(k_opt) >= P(k) - 1e-12
+        k_approx = int(round((np.pi / 4) * np.sqrt(N / M) - 0.5))
+        assert P(k_opt) >= P(k_approx) - 1e-12
 
 
 class TestGroverSearch:

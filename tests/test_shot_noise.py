@@ -134,9 +134,10 @@ class TestPauliStats:
             pauli_outcome_probs(1.5)
 
     def test_shots_needed_std_error(self):
-        """<P>=0 -> sigma2=1 -> N = 1/eps^2; <P>=1 -> N = 0."""
+        """<P>=0 -> sigma2=1 -> N = 1/eps^2; <P>=+/-1 -> N = 1 (minimum)."""
         assert shots_needed_pauli_std_error(0.0, 0.1) == 100
-        assert shots_needed_pauli_std_error(1.0, 0.1) == 0
+        assert shots_needed_pauli_std_error(1.0, 0.1) == 1
+        assert shots_needed_pauli_std_error(-1.0, 0.1) == 1
         # <P>=0.6 -> sigma2 = 1-0.36 = 0.64
         assert shots_needed_pauli_std_error(0.6, 0.1) == 64
 
@@ -275,6 +276,20 @@ class TestHamiltonianShots:
             optimal_allocation_variance(self.COEFFS, self.SIGMAS, 900),
             rel=0.05,
         )
+
+    def test_hamiltonian_variance_accepts_zero_shot_terms(self):
+        """allocate_shots gives zero-weight terms 0 shots; variance must accept it."""
+        coeffs = [1.0, 0.0, 0.5]
+        alloc = allocate_shots(coeffs, None, 100)
+        assert alloc[1] == 0
+        var = hamiltonian_variance(coeffs, None, alloc)
+        assert var == pytest.approx(1.0 / alloc[0] + 0.25 / alloc[2])
+
+    def test_hamiltonian_variance_zero_shots_on_live_term_raises(self):
+        with pytest.raises(ValueError, match="positive shot count"):
+            hamiltonian_variance([1.0, 0.5], None, [10, 0])
+        with pytest.raises(ValueError, match="negative"):
+            hamiltonian_variance([1.0, 0.0], None, [10, -1])
 
     def test_shots_for_hamiltonian(self):
         """N = (sum |c_i| sigma_i)^2 / eps^2."""

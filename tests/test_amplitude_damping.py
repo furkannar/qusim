@@ -101,13 +101,18 @@ class TestApplyChannel:
         out = apply_channel(rho, [K0, K1], qubit=1)
         assert np.trace(out) == pytest.approx(1.0, abs=1e-10)
 
-    def test_non_tp_channel_raises_and_warns(self):
-        """A lone K1 is not trace-preserving -> warning + ValueError."""
+    def test_non_tp_channel_raises(self):
+        """A lone K1 is not trace-preserving -> ValueError."""
         _, K1 = amplitude_damping_kraus(0.5)
         rho = np.array([[0.5, 0], [0, 0.5]], dtype=complex)
-        with pytest.warns(UserWarning, match="not trace-preserving"):
-            with pytest.raises(ValueError, match="not trace-preserving"):
-                apply_channel(rho, [K1], qubit=0)
+        with pytest.raises(ValueError, match="not trace-preserving"):
+            apply_channel(rho, [K1], qubit=0)
+
+    def test_non_tp_channel_raises_even_if_trace_happens_to_match(self):
+        """K = diag(1, 0.5) keeps Tr(|0><0|) = 1 but violates sum K^dag K = I."""
+        rho = np.array([[1, 0], [0, 0]], dtype=complex)
+        with pytest.raises(ValueError, match="not trace-preserving"):
+            apply_channel(rho, [np.diag([1.0, 0.5])], qubit=0)
 
     def test_state_vector_input(self):
         psi = np.array([0, 1], dtype=complex)  # |1>

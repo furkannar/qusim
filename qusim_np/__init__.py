@@ -7,7 +7,7 @@ from qusim_np.gates import (
     identity, cnot, swap, controlled_phase, toffoli, rx, ry, rz,
 )
 from qusim_np.grover_search import (
-    hadamard_transform, hadamard_matrix_closed_form,
+    hadamard_transform, hadamard_matrix_closed_form, apply_hadamard_transform,
     initialize_uniform_superposition, grover_oracle, diffusion_operator,
     grover_iteration, calculate_theta, calculate_optimal_iterations,
     grover_search,
@@ -48,7 +48,7 @@ __all__ = [
     "QuantumConfig", "config", "QuantumGate",
     "pauli_x", "pauli_y", "pauli_z", "hadamard", "phase_gate", "t_gate",
     "identity", "cnot", "swap", "controlled_phase", "toffoli", "rx", "ry", "rz",
-    "hadamard_transform", "hadamard_matrix_closed_form",
+    "hadamard_transform", "hadamard_matrix_closed_form", "apply_hadamard_transform",
     "initialize_uniform_superposition", "grover_oracle", "diffusion_operator",
     "grover_iteration", "calculate_theta", "calculate_optimal_iterations",
     "grover_search",

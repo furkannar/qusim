@@ -58,7 +58,9 @@ def hamiltonian_variance(coefficients, sigmas, shots_per_term):
         coefficients: array-like - Pauli coefficients c_i
         sigmas: array-like or None - single-shot std devs sigma_i
             (default 1 = worst case for +/-1 Pauli outcomes)
-        shots_per_term: array-like of ints - N_i shots on term i
+        shots_per_term: array-like of ints - N_i shots on term i.
+            Terms with c_i * sigma_i = 0 contribute no variance and may
+            be given 0 shots (as allocate_shots does).
 
     Returns:
         float: Var(H_hat) = sum_i c_i^2 sigma_i^2 / N_i
@@ -69,9 +71,15 @@ def hamiltonian_variance(coefficients, sigmas, shots_per_term):
         raise ValueError(
             f"shots_per_term must have shape {c.shape}, got {n_i.shape}"
         )
-    if np.any(n_i <= 0):
-        raise ValueError("every term needs a positive shot count")
-    return float(np.sum(c ** 2 * s ** 2 / n_i))
+    if np.any(n_i < 0):
+        raise ValueError("shot counts cannot be negative")
+    weights = c ** 2 * s ** 2
+    contributes = weights > 0
+    if np.any(n_i[contributes] == 0):
+        raise ValueError(
+            "every term with nonzero c_i * sigma_i needs a positive shot count"
+        )
+    return float(np.sum(weights[contributes] / n_i[contributes]))
 
 
 def uniform_allocation_variance(coefficients, sigmas, total_shots):
