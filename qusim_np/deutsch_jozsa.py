@@ -19,7 +19,7 @@ Deutsch-Jozsa Algorithm:
 
 import numpy as np
 from qusim_np.grover_search import (
-    _validate_n, hadamard_transform, initialize_uniform_superposition
+    _validate_n, apply_hadamard_transform, initialize_uniform_superposition
 )
 
 
@@ -85,20 +85,22 @@ def deutsch_jozsa(n, f):
                 ~1.0 indicates constant, ~0.0 indicates balanced
     """
     _validate_n(n)
+    N = 2 ** n
 
     # Step 1: uniform superposition
     state = initialize_uniform_superposition(n)
 
-    # Step 2: oracle phase kickback
-    O = deutsch_jozsa_oracle(n, f)
-    state = O @ state
+    # Step 2: oracle phase kickback.  O_f is diagonal, so O_f|s> is an
+    # elementwise product with (-1)^{f(x)} — no N x N matrix.
+    phases = 1 - 2 * np.array(_evaluate_f(f, N))
+    state = phases * state
 
-    # Step 3: Hadamard transform again (H^{\otimes n} is self-inverse)
-    H_n = hadamard_transform(n)
-    state = H_n @ state
+    # Step 3: H^{\otimes n} via the fast Walsh-Hadamard transform, O(n 2^n).
+    state = apply_hadamard_transform(state)
 
-    # Step 4: probability of measuring |0...0>
-    zero_probability = abs(state[0]) ** 2
+    # Step 4: probability of measuring |0...0>.  Identity:
+    # A_0 = (1/N) sum_x (-1)^{f(x)}, the mean of the phases.
+    zero_probability = float(abs(state[0]) ** 2)
 
     return state, zero_probability
 

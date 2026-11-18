@@ -34,6 +34,10 @@ class QuantumConfig:
     # Special Unitary: det(U) = 1
     SU2_TOLERANCE: float = 1e-10
 
+    # Shot-noise / measurement sampling
+    # Default number of measurement shots for sampling routines
+    TOTAL_SHOTS: int = 8192
+
 
 # Global config instance
 config = QuantumConfig()
@@ -61,3 +65,39 @@ def sqrt_one_minus_gamma(gamma):
         float: sqrt(1 - gamma)
     """
     return float(np.sqrt(1.0 - gamma))
+
+
+def ln_2_over_delta(delta):
+    r"""
+    Compute ln(2 / delta), the confidence-log factor in concentration bounds.
+
+    This factor appears in the Hoeffding and Bernstein shot-count bounds
+    (qusim_np.shot_noise.bounds) and in the median-of-means count of
+    classical shadows, so it is factored out here.
+
+    Args:
+        delta: float in (0, 1) - failure probability
+
+    Returns:
+        float: ln(2 / delta)
+    """
+    delta = float(delta)
+    if not 0.0 < delta < 1.0:
+        raise ValueError(f"delta must be in (0, 1), got {delta!r}")
+    return float(np.log(2.0 / delta))
+
+
+def two_ln_2_over_delta(delta):
+    r"""
+    Compute 2 * ln(2 / delta).
+
+    This is the numerator of the Hoeffding shot bound for outcomes
+    bounded in [-1, 1] (range R = 2): N >= 2 ln(2/delta) / eps^2.
+
+    Args:
+        delta: float in (0, 1) - failure probability
+
+    Returns:
+        float: 2 * ln(2 / delta)
+    """
+    return 2.0 * ln_2_over_delta(delta)
