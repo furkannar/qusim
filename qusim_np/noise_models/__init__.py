@@ -1,6 +1,10 @@
 """Noise models: quantum channels applied to density matrices."""
 
-from qusim_np.noise_models.channels import to_density_matrix, apply_channel
+from qusim_np.noise_models.channels import (
+    to_density_matrix, apply_channel, apply_unitary_density,
+    kraus_branch_probabilities, sample_kraus_branch,
+)
+from qusim_np.noise_models.noise_model import NoiseModel
 from qusim_np.noise_models.amplitude_damping_error import (
     amplitude_damping_kraus, gamma_from_relaxation, amplitude_damping,
 )
@@ -17,7 +21,8 @@ from qusim_np.noise_models.random_pauli_error import (
 )
 
 __all__ = [
-    "to_density_matrix", "apply_channel",
+    "to_density_matrix", "apply_channel", "apply_unitary_density",
+    "kraus_branch_probabilities", "sample_kraus_branch", "NoiseModel",
     "amplitude_damping_kraus", "gamma_from_relaxation", "amplitude_damping",
     "phase_damping_kraus", "phase_flip_kraus",
     "lambda_from_p", "p_from_lambda",
