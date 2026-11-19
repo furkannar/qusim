@@ -242,6 +242,60 @@ def apply_two_qubit(state, gate, q0, q1):
     return out.reshape(-1)
 
 
+def _validate_qubits(qubits, n):
+    """Validate a qubit index or sequence of distinct indices; return a list of ints."""
+    if isinstance(qubits, (int, np.integer)) and not isinstance(qubits, bool):
+        qubits = [qubits]
+    try:
+        qubits = list(qubits)
+    except TypeError:
+        raise ValueError(f"qubits must be an integer or a sequence of integers, got {qubits!r}") from None
+    if not qubits:
+        raise ValueError("at least one qubit is required")
+    out = []
+    for q in qubits:
+        if not isinstance(q, (int, np.integer)) or isinstance(q, bool) or not 0 <= q < n:
+            raise ValueError(f"qubit must be an integer in [0, {n}), got {q!r}")
+        out.append(int(q))
+    if len(set(out)) != len(out):
+        raise ValueError(f"qubits must be distinct, got {out}")
+    return out
+
+
+def apply_gate(state, gate, qubits):
+    r"""
+    Apply a k-qubit gate to the given qubits of a state vector.
+
+    Generalizes apply_single_qubit / apply_two_qubit: the gate is a
+    2^k x 2^k matrix whose tensor factors act on qubits[0], ..., qubits[k-1]
+    in that order (qubits[0] is the most significant bit of the gate's
+    index), regardless of the numeric order of the indices.  The target
+    axes of the (2,)*n state tensor are moved to the front, the gate is
+    applied as one (2^k x 2^k) @ (2^k x 2^(n-k)) product, and the axes
+    are moved back — O(2^k * 2^n) time, no 2^n x 2^n matrix.
+
+    Args:
+        state: numpy.ndarray of shape (2^n,) - state amplitudes
+        gate: 2^k x 2^k matrix
+        qubits: int or sequence of k distinct ints in [0, n)
+
+    Returns:
+        numpy.ndarray: The state after applying the gate, shape (2^n,)
+    """
+    state, n = _check_state(state)
+    qubits = _validate_qubits(qubits, n)
+    k = len(qubits)
+    U = np.asarray(gate, dtype=complex)
+    if U.shape != (2 ** k, 2 ** k):
+        raise ValueError(
+            f"gate on {k} qubit(s) must have shape ({2 ** k}, {2 ** k}), got {U.shape}"
+        )
+    front = list(range(k))
+    t = np.moveaxis(state.reshape((2,) * n), qubits, front).reshape(2 ** k, -1)
+    out = (U @ t).reshape((2,) * n)
+    return np.moveaxis(out, front, qubits).reshape(-1)
+
+
 def apply_pauli_string(state, pauli_string):
     r"""
     Apply a Pauli string P = \bigotimes_k \sigma_k to a state vector.

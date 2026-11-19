@@ -1,4 +1,4 @@
-"""Lightweight quantum simulator: gates, state vectors, algorithms, VQE, and noise channels."""
+"""Lightweight quantum simulation package: circuits, gates, state vectors, algorithms, VQE, noise and shot noise."""
 
 from qusim_np.config import QuantumConfig, config
 from qusim_np.gates import (
@@ -19,12 +19,13 @@ from qusim_np.qft import (
     qft_matrix, inverse_qft_matrix, qft_state, inverse_qft_state,
 )
 from qusim_np.vqe import (
-    pauli_string_matrix, apply_single_qubit, apply_two_qubit,
+    pauli_string_matrix, apply_single_qubit, apply_two_qubit, apply_gate,
     apply_pauli_string, pauli_string_expval, hamiltonian, expectation_value,
     hea_param_count, hea_state, vqe_energy, vqe_optimize,
 )
 from qusim_np.noise_models import (
-    to_density_matrix, apply_channel,
+    to_density_matrix, apply_channel, apply_unitary_density,
+    kraus_branch_probabilities, sample_kraus_branch, NoiseModel,
     amplitude_damping_kraus, gamma_from_relaxation, amplitude_damping,
     phase_damping_kraus, phase_flip_kraus,
     lambda_from_p, p_from_lambda,
@@ -43,8 +44,10 @@ from qusim_np.shot_noise import (
     covariance_matrix_from_samples, allocate_group_shots,
     measurement_probabilities, sample_bitstrings, estimate_distribution,
 )
+from qusim_np.circuit import QuantumCircuit, Instruction
 
 __all__ = [
+    "QuantumCircuit", "Instruction", "NoiseModel",
     "QuantumConfig", "config", "QuantumGate",
     "pauli_x", "pauli_y", "pauli_z", "hadamard", "phase_gate", "t_gate",
     "identity", "cnot", "swap", "controlled_phase", "toffoli", "rx", "ry", "rz",
@@ -54,10 +57,11 @@ __all__ = [
     "grover_search",
     "deutsch_jozsa_oracle", "deutsch_jozsa", "deutsch_jozsa_classify",
     "qft_matrix", "inverse_qft_matrix", "qft_state", "inverse_qft_state",
-    "pauli_string_matrix", "apply_single_qubit", "apply_two_qubit",
+    "pauli_string_matrix", "apply_single_qubit", "apply_two_qubit", "apply_gate",
     "apply_pauli_string", "pauli_string_expval", "hamiltonian", "expectation_value",
     "hea_param_count", "hea_state", "vqe_energy", "vqe_optimize",
-    "to_density_matrix", "apply_channel",
+    "to_density_matrix", "apply_channel", "apply_unitary_density",
+    "kraus_branch_probabilities", "sample_kraus_branch",
     "amplitude_damping_kraus", "gamma_from_relaxation", "amplitude_damping",
     "phase_damping_kraus", "phase_flip_kraus",
     "lambda_from_p", "p_from_lambda",
