@@ -1,13 +1,17 @@
 """
 Composing circuits: reusable builders, inverse, compose, custom gates,
-and an algorithm (Grover) written as a circuit.
+and algorithms (Grover, Shor) written as circuits.
 
 Run:  python examples/02_composing_circuits.py
 """
 
 import numpy as np
 
-from qusim_np import QuantumCircuit
+from qusim_np import QuantumCircuit, inverse_qft_matrix
+from qusim_np.shor import (
+    modular_exponentiation, modular_multiplication_permutation,
+    order_from_measurement, factors_from_order, shor,
+)
 
 
 def ghz(n):
@@ -46,3 +50,32 @@ grover.cz(0, 1)                                       # oracle
 grover.h(0).h(1).x(0).x(1).cz(0, 1).x(0).x(1).h(0).h(1)   # diffusion
 print("Grover finds '11':", grover.sample_counts(100, rng=np.random.default_rng(2)))
 print("depth:", grover.depth, "gates:", grover.size)
+
+# Shor's algorithm as a circuit (factor M = 15 with base a = 7) ---------
+#   qubits 0-7  : counting register |x>, qubit 0 is the most significant bit
+#   qubits 8-11 : work register, starts at |1>
+#   controlled-U^(2^j), with U|w> = |7 w mod 15>, as a custom gate whose
+#   control is the counting qubit of weight 2^j; then QFT^dagger on |x>
+M, a, t, n_w = 15, 7, 8, 4
+W = 2 ** n_w
+counting, work = list(range(t)), list(range(t, t + n_w))
+
+shor_qc = QuantumCircuit(t + n_w).x(work[-1])        # work register = |0001> = |1>
+for q in counting:
+    shor_qc.h(q)
+for j in range(t):
+    perm = modular_multiplication_permutation(modular_exponentiation(a, 2 ** j, M), M, n_w)
+    CU = np.eye(2 * W)                               # block diag(I, U^(2^j))
+    CU[W:, W:] = 0
+    CU[W + perm, W + np.arange(W)] = 1
+    shor_qc.unitary(CU, [counting[t - 1 - j]] + work, name=f"c-U^{2 ** j}")
+shor_qc.unitary(inverse_qft_matrix(t), counting, name="qft_dg")
+
+counts = shor_qc.sample_counts(20, rng=np.random.default_rng(3))
+ys = {}
+for bits, c in counts.items():                       # first t bits are y
+    ys[int(bits[:t], 2)] = ys.get(int(bits[:t], 2), 0) + c
+print("Shor counting register y:", dict(sorted(ys.items())))   # peaks at 0, 64, 128, 192
+r = max(order_from_measurement(y, 2 ** t, a, M) or 0 for y in ys)
+print(f"order r = {r}, factors of {M}:", factors_from_order(a, r, M))
+print("one call:", shor(M, a=a, rng=np.random.default_rng(3)))

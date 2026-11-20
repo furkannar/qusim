@@ -18,6 +18,16 @@ from qusim_np.deutsch_jozsa import (
 from qusim_np.qft import (
     qft_matrix, inverse_qft_matrix, qft_state, inverse_qft_state,
 )
+from qusim_np.resources import (
+    available_memory_bytes, available_memory_gb, check_memory, MemoryMonitor,
+)
+from qusim_np.shor import (
+    divisors, is_prime, prime_power_base, modular_exponentiation,
+    validate_base, register_sizes, modular_multiplication_unitary,
+    order_finding_state, counting_distribution, order_from_measurement,
+    quantum_order_finding, factors_from_order, shor,
+    memory_required, estimate_capacity, detected_budget_gb,
+)
 from qusim_np.vqe import (
     pauli_string_matrix, apply_single_qubit, apply_two_qubit, apply_gate,
     apply_pauli_string, pauli_string_expval, hamiltonian, expectation_value,
@@ -57,6 +67,12 @@ __all__ = [
     "grover_search",
     "deutsch_jozsa_oracle", "deutsch_jozsa", "deutsch_jozsa_classify",
     "qft_matrix", "inverse_qft_matrix", "qft_state", "inverse_qft_state",
+    "divisors", "is_prime", "prime_power_base", "modular_exponentiation",
+    "validate_base", "register_sizes", "modular_multiplication_unitary",
+    "order_finding_state", "counting_distribution", "order_from_measurement",
+    "quantum_order_finding", "factors_from_order", "shor",
+    "memory_required", "estimate_capacity", "detected_budget_gb",
+    "available_memory_bytes", "available_memory_gb", "check_memory", "MemoryMonitor",
     "pauli_string_matrix", "apply_single_qubit", "apply_two_qubit", "apply_gate",
     "apply_pauli_string", "pauli_string_expval", "hamiltonian", "expectation_value",
     "hea_param_count", "hea_state", "vqe_energy", "vqe_optimize",

@@ -24,6 +24,7 @@ Examples:
 
 import numpy as np
 from qusim_np.grover_search import _validate_n
+from qusim_np.resources import check_memory, state_bytes
 
 
 def qft_matrix(n):
@@ -40,6 +41,8 @@ def qft_matrix(n):
     """
     _validate_n(n)
     N = 2 ** n
+    # int64 exponent table + complex result
+    check_memory(state_bytes(N * N, 32))
     # omega^{jk} depends only on jk mod N; reducing first keeps the
     # exp() argument in [0, 2 pi) and avoids precision loss for large jk.
     jk = np.outer(np.arange(N), np.arange(N)) % N
@@ -54,6 +57,7 @@ def _check_power_of_two_state(state):
     n = int(round(np.log2(N))) if N > 0 else 0
     if n < 1 or 2 ** n != N:
         raise ValueError(f"state dimension {N} is not a power of 2 >= 2")
+    check_memory(state_bytes(N))     # the FFT output
     return state
 
 

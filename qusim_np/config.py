@@ -38,9 +38,35 @@ class QuantumConfig:
     # Default number of measurement shots for sampling routines
     TOTAL_SHOTS: int = 8192
 
+    # Shor's algorithm memory estimate
+    # Peak bytes per state amplitude: 16 for the complex128 state, plus up
+    # to 16 of temporaries (half the state, copied twice while a
+    # controlled-U^{2^j} permutes it, or the FFT output). Measured with
+    # tracemalloc; checked in tests/test_algorithms/test_shor.py.
+    BYTES_PER_AMPLITUDE: int = 32
+
+    # System resource guards (qusim_np/resources.py)
+    # Refuse to run when free RAM is, or would become, lower than this
+    MIN_FREE_RAM_MB: int = 128
+    # Reuse a RAM reading this young for small allocations (psutil ~40 us)
+    MEMORY_CHECK_CACHE_S: float = 0.1
+    # Re-check RAM during long loops only for states this large (2^20 = 16 MiB)
+    MONITOR_MIN_AMPLITUDES: int = 2 ** 20
+    # How often to re-check RAM during a long loop
+    MONITOR_INTERVAL_S: float = 0.5
+
 
 # Global config instance
 config = QuantumConfig()
+
+
+# Memory units, binary convention (as psutil and the OS report RAM):
+# 1 KB = 2^10 bytes, 1 MB = 2^20 bytes, 1 GB = 2^30 bytes (KiB, MiB, GiB).
+# Byte counts in the package are converted with these, e.g.
+# config.MIN_FREE_RAM_MB * MB, or memory_gb * GB.
+KB = 2 ** 10
+MB = 2 ** 20
+GB = 2 ** 30
 
 
 # Single-qubit Pauli matrices (used by VQE Hamiltonians and Pauli strings)

@@ -20,6 +20,7 @@ Grover's Search Algorithm:
 
 import numpy as np
 from qusim_np.gates import hadamard
+from qusim_np.resources import MemoryMonitor, check_memory, state_bytes
 
 
 def _validate_n(n):
@@ -61,6 +62,8 @@ def hadamard_transform(n):
         numpy.ndarray: The n-qubit Hadamard matrix of shape (2^n, 2^n)
     """
     _validate_n(n)
+    # The last kron allocates the 4^n result next to the 4^(n-1) input
+    check_memory(2 * state_bytes(4 ** n))
     # Single-qubit Hadamard matrix
     H = hadamard().matrix
     
@@ -88,6 +91,8 @@ def hadamard_matrix_closed_form(n):
     """
     _validate_n(n)
     N = 2 ** n
+    # int64 AND table + float signs + complex result
+    check_memory(state_bytes(N * N, 32))
     idx = np.arange(N)
     # Bitwise dot product j . k = popcount(j AND k); only its parity matters.
     parity = np.bitwise_count(np.bitwise_and.outer(idx, idx)) & 1
@@ -115,12 +120,16 @@ def apply_hadamard_transform(state):
     n = int(round(np.log2(N))) if N > 0 else 0
     if n < 1 or 2 ** n != N:
         raise ValueError(f"state dimension {N} is not a power of 2 >= 2")
+    # Each stage holds x, a + b, a - b and the stacked output
+    check_memory(state_bytes(N, 48))
+    monitor = MemoryMonitor(N)
     h = 1
     while h < N:
         x = x.reshape(-1, 2, h)
         a, b = x[:, 0, :], x[:, 1, :]
         x = np.stack((a + b, a - b), axis=1)
         h *= 2
+        monitor.step()
     return x.reshape(-1) / np.sqrt(N)
 
 
@@ -139,6 +148,7 @@ def initialize_uniform_superposition(n):
     """
     _validate_n(n)
     N = 2 ** n
+    check_memory(state_bytes(N))
     # H^{\otimes n}|0^n> is the first column of H^{\otimes n}: every entry
     # is (-1)^{j.0} / sqrt(N) = 1 / sqrt(N).  No matrix needed.
     return np.full(N, 1.0 / np.sqrt(N), dtype=complex)
@@ -160,6 +170,7 @@ def grover_oracle(n, marked_states):
     """
     marked_states = _validate_marked_states(n, marked_states)
     N = 2 ** n
+    check_memory(state_bytes(N * N))
     O = np.eye(N, dtype=complex)
     
     # Flip phase of marked states
@@ -185,6 +196,7 @@ def diffusion_operator(n):
     _validate_n(n)
     N = 2 ** n
     # |s><s| = J / N with J the all-ones matrix, so D = (2/N) J - I.
+    check_memory(state_bytes(N * N))
     D = np.full((N, N), 2.0 / N, dtype=complex)
     D[np.diag_indices(N)] -= 1.0
     return D
@@ -293,6 +305,8 @@ def grover_search(n, marked_states):
     """
     marked_states = _validate_marked_states(n, marked_states)
     marked = np.asarray(marked_states, dtype=np.intp)
+    # The state, plus 2 * mean(psi) - psi creating a new vector each step
+    check_memory(state_bytes(2 ** n, 32))
 
     # Step 1: Initialize uniform superposition
     state = initialize_uniform_superposition(n)
@@ -301,9 +315,11 @@ def grover_search(n, marked_states):
     k_opt = calculate_optimal_iterations(n, marked_states)
 
     # Step 2: Apply k_opt Grover iterations G = D O_f
+    monitor = MemoryMonitor(state.size)
     for _ in range(k_opt):
         _apply_oracle_inplace(state, marked)
         state = _apply_diffusion(state)
+        monitor.step()
 
     # Step 3: Probability of measuring a marked state
     marked_prob = float(np.sum(np.abs(state[marked]) ** 2))

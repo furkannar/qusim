@@ -2,11 +2,13 @@
 
 **A lightweight quantum simulation package in pure NumPy.**
 
-A chainable `QuantumCircuit` builder, matrix-free state-vector algorithms,
-a working Variational Quantum Eigensolver, Kraus noise channels with exact
-and quantum-trajectory noisy simulation, and finite-shot measurement
-statistics — in ~4,000 lines of documented code backed by 438 tests.
-Only NumPy and SciPy are required.
+A chainable `QuantumCircuit` builder, matrix-free state-vector algorithms
+(including Shor's factoring algorithm), a working Variational Quantum
+Eigensolver, Kraus noise channels with exact and quantum-trajectory noisy
+simulation, finite-shot measurement statistics, and RAM guards that stop a
+simulation before it exhausts the machine — in ~4,700 lines of documented
+code backed by 555 tests.
+Only NumPy, SciPy and psutil are required.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -21,11 +23,12 @@ Only NumPy and SciPy are required.
 |---|---|
 | **Circuits** | `QuantumCircuit` builder (`qc.h(0).cx(0, 1)`) with lazy simulation, counts, exact and finite-shot expectation values, compose / inverse, custom unitaries — see the [Circuit tutorial](#circuit-tutorial) |
 | **Noisy circuits** | Gate-level `NoiseModel`; exact density-matrix simulation, or quantum trajectories in O(2ⁿ) memory for 20+ noisy qubits |
-| **Algorithms** | Grover search, Deutsch–Jozsa, Quantum Fourier Transform |
+| **Algorithms** | Grover search, Deutsch–Jozsa, Quantum Fourier Transform, Shor factoring |
 | **VQE** | Pauli-string Hamiltonians, hardware-efficient ansatz, `scipy` optimizer |
 | **Noise channels** | Amplitude damping, phase damping/flip, thermal relaxation, depolarizing, random Pauli — Kraus sets validated for completeness |
 | **Shot noise** | Finite-shot estimators, CLT / Hoeffding / Bernstein shot bounds, optimal shot allocation, grouped (commuting) measurements, bitstring sampling |
-| **Performance** | Matrix-free throughout: gates, Pauli strings, Grover, Deutsch–Jozsa and the QFT act directly on the state vector — see [Performance](#performance) |
+| **Performance** | Matrix-free throughout: gates, Pauli strings, Grover, Deutsch–Jozsa, the QFT and Shor act directly on the state vector — see [Performance](#performance) |
+| **Resource guards** | Free RAM read with `psutil`; runs that would leave < 128 MB are refused before allocating, and Shor sizes itself to the machine — see [Resource guards](#resource-guards) |
 
 ## Install
 
@@ -41,7 +44,7 @@ cd qusim-np
 pip install -e .
 ```
 
-Requires Python ≥ 3.10, NumPy ≥ 2.0, SciPy ≥ 1.11.
+Requires Python ≥ 3.10, NumPy ≥ 2.0, SciPy ≥ 1.11, psutil ≥ 5.9.
 
 ## Quick start
 
@@ -59,6 +62,7 @@ print(bell.expectation([1.0], ["ZZ"]))                          # 1.0
 state, k, p = qusim_np.grover_search(3, marked_states=[5])      # find |101> among 8 states
 print(f"{k} iterations -> P(marked) = {p:.3f}")                 # 2 iterations -> 0.945
 print(qusim_np.deutsch_jozsa_classify(3, lambda x: x % 2))      # 'balanced'
+print(qusim_np.shor(15, a=7)["factors"])                        # (3, 5)
 ```
 
 ## Circuit tutorial
@@ -70,7 +74,7 @@ result. Every snippet below is taken from the runnable scripts in
 | Script | Covers |
 |---|---|
 | [`01_circuit_basics.py`](examples/01_circuit_basics.py) | building, inspecting, simulating, measuring, observables |
-| [`02_composing_circuits.py`](examples/02_composing_circuits.py) | reusable builders, `inverse`, `compose`, custom gates, Grover as a circuit |
+| [`02_composing_circuits.py`](examples/02_composing_circuits.py) | reusable builders, `inverse`, `compose`, custom gates, Grover and Shor as circuits |
 | [`03_variational_circuits.py`](examples/03_variational_circuits.py) | a VQE written with circuits, evaluated with shots and noise |
 | [`04_noise_and_trajectories.py`](examples/04_noise_and_trajectories.py) | `NoiseModel`, density matrices, quantum trajectories at 16 qubits |
 
@@ -188,6 +192,32 @@ grover.h(0).h(1).x(0).x(1).cz(0, 1).x(0).x(1).h(0).h(1)      # diffusion
 grover.sample_counts(100)                                    # {'11': 100}
 ```
 
+Shor's algorithm for M = 15, a = 7 on 12 qubits: 8 counting qubits in
+superposition, a 4-qubit work register starting at |1⟩, controlled
+U^(2ʲ) as custom gates (U|w⟩ = |7w mod 15⟩), then the inverse QFT. See
+[Shor's algorithm](#shors-algorithm) for the math:
+
+```python
+from qusim_np import inverse_qft_matrix
+from qusim_np.shor import modular_exponentiation, modular_multiplication_permutation
+
+M, a, t, n_w = 15, 7, 8, 4
+W = 2 ** n_w
+counting, work = list(range(t)), list(range(t, t + n_w))
+
+shor_qc = QuantumCircuit(t + n_w).x(work[-1])        # work register = |1>
+for q in counting:
+    shor_qc.h(q)
+for j in range(t):                                   # controlled-U^(2^j)
+    perm = modular_multiplication_permutation(modular_exponentiation(a, 2 ** j, M), M, n_w)
+    CU = np.eye(2 * W)
+    CU[W:, W:] = 0
+    CU[W + perm, W + np.arange(W)] = 1
+    shor_qc.unitary(CU, [counting[t - 1 - j]] + work, name=f"c-U^{2 ** j}")
+shor_qc.unitary(inverse_qft_matrix(t), counting, name="qft_dg")
+# counting register y over 20 shots: {0: 5, 64: 6, 128: 7, 192: 2} -> r = 4 -> (3, 5)
+```
+
 ### 8. Variational circuits (VQE)
 
 `QuantumCircuit.from_hea(n, theta, layers)` builds the hardware-efficient
@@ -280,7 +310,7 @@ big.sample_counts(50, method="trajectory")
 
 ## Algorithms
 
-Grover search, Deutsch–Jozsa and the QFT are also available as single
+Grover search, Deutsch–Jozsa, the QFT and Shor's algorithm are also available as single
 functions that run directly on state vectors:
 
 ```python
@@ -290,6 +320,7 @@ import qusim_np
 state, k, p = qusim_np.grover_search(10, marked_states=[3, 700])
 qusim_np.deutsch_jozsa_classify(8, lambda x: 0)              # 'constant'
 qusim_np.qft_state(np.eye(16)[3])                            # QFT|3>, computed by FFT
+qusim_np.shor(55)["factors"]                                 # (5, 11)
 ```
 
 ### The math, briefly
@@ -309,6 +340,64 @@ The Quantum Fourier Transform is the unitary
 
 $$F_{jk} = \frac{1}{\sqrt{N}}\,\omega^{jk}, \qquad
 \omega = e^{2\pi i / N}, \qquad j,k = 0,\dots,N-1$$
+
+### Shor's algorithm
+
+Shor's algorithm factors an odd composite $M$ by finding the **order**
+$r$ of a base $a$: the smallest $r > 0$ with $a^r \equiv 1 \pmod M$.
+Here $M$ is the number to factor, and $N = 2^n$ keeps its meaning from
+above, the number of basis states.
+
+1. **Classical checks.** Even $M$ and prime powers $M = b^k$ are split
+   directly, and primes are rejected using a square-root divisor search.
+   The base must satisfy $1 < a < M$ and $\gcd(a, M) = 1$.
+2. **Registers.** $n_w = \lceil \log_2 M \rceil$ work qubits and
+   $t = 2n_w$ counting qubits, so $Q = 2^t \ge M^2$ and $n = t + n_w$.
+3. **Superposition and modular exponentiation.** Hadamards on the
+   counting register, then controlled $U^{2^j}$ with
+   $U|w\rangle = |a w \bmod M\rangle$, give
+
+$$\frac{1}{\sqrt{Q}} \sum_{x=0}^{Q-1} |x\rangle\,|a^x \bmod M\rangle$$
+
+4. **Inverse QFT and measurement.** The outcome $y$ satisfies
+   $y/Q \approx s/r$ for a random $s$. Continued fractions give $r$.
+5. **Factors.** If $r$ is even and $a^{r/2} \not\equiv -1 \pmod M$, then
+   $\gcd(a^{r/2} \pm 1,\, M)$ are nontrivial factors.
+
+```python
+import qusim_np
+
+qusim_np.shor(15, a=7)
+# {'factors': (3, 5), 'a': 7, 'r': 4, 'method': 'quantum', 'attempts': 1}
+
+P = qusim_np.counting_distribution(7, 15)    # P(y) over Q = 256 outcomes
+P.nonzero()[0]                               # [0, 64, 128, 192]: y/Q = s/4
+qusim_np.order_from_measurement(64, 256, 7, 15)   # 4
+```
+
+`method` reports how the factors were found: `"classical"` (even or prime
+power), `"gcd"` (a random base already shared a factor with $M$) or
+`"quantum"` (order finding). Pass `a=` to force the quantum path. $U$ is
+stored as a permutation, and $U^{2^j}$ is multiplication by
+`pow(a, 2**j, M)`, so a run costs $O(t \cdot 2^n)$ time and $O(2^n)$
+memory: 32 bytes per amplitude at peak (`config.BYTES_PER_AMPLITUDE`).
+
+How far you can go depends on your machine. By default the budget is
+read from it: the RAM free right now, minus the 128 MB that is always
+kept in reserve (see [Resource guards](#resource-guards)). Pass
+`memory_gb=` to plan for another machine or to cap the run lower:
+
+```python
+qusim_np.estimate_capacity()         # detected: 13.3 GiB free on this laptop
+# {'memory_gb': 13.29, 'detected': True, 'max_qubits': 28, 'usable_qubits': 27,
+#  'work_qubits': 9, 'max_M': 512, 'peak_bytes': 4294967296}
+qusim_np.estimate_capacity(64)       # a 64 GiB budget: 30 qubits, M <= 1024
+qusim_np.memory_required(15)         # 131072 bytes (12 qubits)
+qusim_np.shor(1021 * 3, memory_gb=8) # ValueError: ... that budget holds 27 qubits, i.e. M <= 512
+```
+
+The registers use $n = 3n_w$ qubits, so only multiples of 3 are usable,
+and each extra work qubit costs 8× the memory.
 
 ## Variational Quantum Eigensolver
 
@@ -442,6 +531,7 @@ popcount(·) counts set bits.
 | Deutsch–Jozsa | oracle as an elementwise phase, then fast Walsh–Hadamard; amplitude of the zero state = mean of (−1)^f(x) | O(4ⁿ) → O(n·2ⁿ) |
 | `qft_state` / `inverse_qft_state` | QFT = `np.fft.ifft(x, norm="ortho")`, inverse = `np.fft.fft` | O(4ⁿ) → O(n·2ⁿ) |
 | `qft_matrix` | ω^(jk) = ω^(jk mod N), reduced before `exp` | better precision for large jk |
+| Shor's modular multiplication | U is a permutation when gcd(a, M) = 1; U^(2ʲ) = multiplication by `pow(a, 2**j, M)` | dense matrix O(4^n_w) → index array O(2^n_w); 2ʲ applications → 1 |
 
 **Pauli strings and VQE** (`vqe.py`)
 
@@ -484,9 +574,41 @@ popcount(·) counts set bits.
 | Noisy 20-qubit GHZ, one trajectory | impossible (16 TB density matrix) | 0.8 s, 16 MB |
 
 Every fast path is cross-checked against a dense reference in
-`tests/test_fast_paths.py` and `tests/test_circuit.py`.
+`tests/test_algorithms/test_fast_paths.py` and `tests/test_circuit/test_circuit.py`.
 
-## Qubit convention
+## Resource guards
+
+Simulations allocate 2ⁿ (state vectors) or 4ⁿ (density matrices, dense
+operators) entries, so `qusim_np/resources.py` watches the machine:
+
+- **RAM floor.** Before a large allocation, each entry point (circuits,
+  Grover, Deutsch–Jozsa, QFT, Hamiltonians, the HEA ansatz, density
+  matrices, Shor) estimates its size and raises `RuntimeError` if it
+  would leave less than **128 MB** free. It does not wait for the system
+  to start swapping.
+- **Re-checks during long runs.** Loops over large states (2²⁰
+  amplitudes and up) read the RAM again every 0.5 s, in case other
+  programs fill it mid-run. Between checks a step costs one clock read
+  (~40 ns). The loops never pause or sleep, so large runs go at full
+  speed.
+
+```python
+qusim_np.available_memory_gb()       # 13.4  (psutil: RAM free right now)
+qusim_np.check_memory(2 ** 30)       # raises if 1 GiB more would leave < 128 MB
+# RuntimeError: Dangerously low RAM: this step needs about 1,024 MB, which would
+# leave 90 MB (minimum free: 128 MB; ...). Close other programs or reduce the
+# number of qubits.
+```
+
+All thresholds live in `config` and can be changed at runtime:
+`MIN_FREE_RAM_MB`, `MONITOR_MIN_AMPLITUDES`, `MONITOR_INTERVAL_S`,
+`MEMORY_CHECK_CACHE_S`.
+Measured overhead: none (Grover n = 19 and the circuit/VQE test suites
+take the same time with the guards on).
+
+## Conventions
+
+### Qubit order
 
 Qubit 0 is the **most significant bit** of the basis-state index:
 
@@ -494,23 +616,90 @@ $$|q_0 q_1 \dots q_{n-1}\rangle \;\longleftrightarrow\;
 \sum_{k=0}^{n-1} q_k\, 2^{\,n-1-k}$$
 
 A Pauli string `"XZI"` means X on qubit 0, Z on qubit 1 and I on qubit 2,
-and a measured bitstring `"10"` means qubit 0 = 1, qubit 1 = 0.
+and a measured bitstring `"10"` means qubit 0 = 1, qubit 1 = 0. This is
+the reverse of Qiskit, which prints qubit 0 rightmost.
+
+### Notation
+
+| Symbol | Meaning |
+|---|---|
+| $n$ | number of qubits |
+| $N = 2^n$ | number of basis states (the length of a state vector), in every module |
+| $M$ | Grover: number of marked states. Shor: the integer being factored |
+| $t,\ n_w$ | Shor: counting and work qubits, $t = 2n_w$, so $n = 3n_w$ |
+| $Q = 2^t$ | Shor: number of values of the counting register |
+
+Shor's algorithm is usually written with $N$ for the number to factor.
+Here $N$ always means $2^n$, so the number to factor is $M$.
+
+### Memory units
+
+Sizes use the **binary** convention, the same one psutil and the OS use
+to report RAM. The constants live in `qusim_np.config`:
+
+```python
+from qusim_np.config import KB, MB, GB     # 2**10, 2**20, 2**30 bytes
+
+config.MIN_FREE_RAM_MB * MB                # the RAM floor, in bytes
+qusim_np.estimate_capacity(8)              # memory_gb=8 means 8 * GB bytes
+```
+
+A complex128 amplitude takes 16 bytes, so a state vector of $n$ qubits
+takes $16 \cdot 2^n$ bytes and a density matrix $16 \cdot 4^n$.
+
+### Configuration
+
+- **`qusim_np.config`** (an instance of `QuantumConfig`) holds settings
+  you may want to change, such as `MIN_FREE_RAM_MB`,
+  `BYTES_PER_AMPLITUDE` and `SU2_TOLERANCE`. They are read every time a function runs, so
+  `config.MIN_FREE_RAM_MB = 256` takes effect immediately.
+- **Module-level constants** in `qusim_np/config.py` are fixed facts
+  that are not meant to change: the Pauli matrices and `KB` / `MB` / `GB`.
+
+### Errors and randomness
+
+- **`ValueError`**: invalid input, such as a wrong shape, a non-unitary
+  matrix, a non-coprime Shor base, or a run larger than the `memory_gb`
+  you gave.
+- **`RuntimeError`**: the machine itself is the problem. RAM is, or
+  would become, dangerously low.
+- **`rng=`**: every sampling function takes an optional
+  `numpy.random.Generator`. Pass `np.random.default_rng(seed)` for
+  reproducible results; `None` creates a fresh generator.
+
+### Tests and examples
+
+- **`tests/` mirrors the package:** algorithm tests go in
+  `tests/test_algorithms/`, noise channels in `tests/test_noise_models/`,
+  and so on. Fast paths are cross-checked against dense references.
+- **`examples/` is a tutorial**, grouped by topic, not one file per
+  algorithm. New algorithms appear as circuit sections in an existing
+  script, as Grover and Shor do in `02_composing_circuits.py`. Every
+  script runs as a test.
 
 ## Project layout
 
 ```
 qusim_np/
 ├── circuit.py               # QuantumCircuit builder + Instruction
-├── config.py                # constants + Pauli matrices
+├── config.py                # constants, Pauli matrices, resource thresholds
 ├── gates.py                 # QuantumGate + gate constructors
 ├── grover_search.py         # Hadamard transforms, oracle, diffusion, Grover
 ├── deutsch_jozsa.py         # Deutsch-Jozsa algorithm
 ├── qft.py                   # QFT / inverse QFT (FFT-based on states)
+├── shor.py                  # Shor's factoring: order finding, continued fractions
 ├── vqe.py                   # Pauli strings, apply_gate, Hamiltonians, HEA ansatz, VQE driver
 ├── noise_models/            # Kraus channels, trajectory sampling, NoiseModel
-└── shot_noise/              # finite-shot estimation, shot bounds, allocation, sampling
+├── shot_noise/              # finite-shot estimation, shot bounds, allocation, sampling
+└── resources.py             # RAM floor and in-loop RAM re-checks (psutil)
 examples/                    # runnable circuit tutorial scripts (01-04)
-tests/                       # 438 tests, incl. fast-path, circuit and example checks
+tests/                       # 555 tests, grouped like the package:
+├── test_algorithms/         # Grover, Deutsch-Jozsa, QFT, Shor, VQE, fast-path cross-checks
+├── test_circuit/            # QuantumCircuit builder
+├── test_core/               # gates, resource guards
+├── test_noise_models/       # Kraus channels
+├── test_shot_noise/         # finite-shot estimation and sampling
+└── test_examples/           # runs every script in examples/
 ```
 
 ## Limitations
@@ -544,7 +733,8 @@ For production quantum computing, see [Qiskit](https://www.ibm.com/quantum/qiski
 
 ```bash
 pip install -e .[dev]
-pytest                                   # 438 tests, ~25 s
+pytest                                   # 555 tests, ~25 s
+pytest tests/test_algorithms             # or just one group
 python examples/01_circuit_basics.py     # or any other tutorial script
 ```
 
@@ -556,7 +746,7 @@ Parts of this codebase were written with assistance from **SWE-2 by
 Cognition**, accessed through the **Devin** platform, for coding tasks
 such as implementing algorithms, tests, and documentation.
 
-Versions 1.2 and 1.3 were developed with **Claude Opus 5.5 by
+Versions 1.2 to 1.4 were developed with **Claude Opus 5.5 by
 Anthropic**, used through **Claude Code**:
 
 - **1.2:** codebase analysis, the matrix-free rewrites of Grover,
@@ -568,6 +758,16 @@ Anthropic**, used through **Claude Code**:
   simulator (built on the author's idea of evolving state vectors with
   inner-product branch probabilities instead of density matrices), the
   tutorial examples, and this documentation
+- **1.4:** Shor's factoring algorithm, built to the
+  author's specification: the square-root divisor search, the
+  `gcd(a, M) = 1` base check, Python's `pow` for modular
+  exponentiation, the Hadamard gate from `gates.py` for the
+  superposition, and a cheap permutation unitary. Also the
+  memory-budget estimate (peak bytes per amplitude measured with
+  `tracemalloc`), the `psutil` RAM guards across all modules (the
+  author's idea), the test-suite reorganization, and Python 3.13 / 3.14
+  support. A CPU-throttling pause was prototyped and then removed at
+  the author's request, so large runs keep full speed
 
 All architectural and design decisions were made by the author.
 

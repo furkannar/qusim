@@ -26,6 +26,7 @@ column side.
 import numpy as np
 
 from qusim_np.grover_search import _validate_n
+from qusim_np.resources import check_memory, state_bytes
 
 _TRACE_TOL = 1e-8
 
@@ -43,6 +44,7 @@ def to_density_matrix(state):
     state = np.asarray(state, dtype=complex)
     if state.ndim != 1:
         raise ValueError(f"state must be a 1-D vector, got shape {state.shape}")
+    check_memory(state_bytes(state.size ** 2))
     return np.outer(state, state.conj())
 
 

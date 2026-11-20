@@ -36,6 +36,7 @@ from qusim_np.noise_models.channels import (
     _sample_branch, apply_channel, apply_unitary_density,
 )
 from qusim_np.noise_models.noise_model import NoiseModel
+from qusim_np.resources import MemoryMonitor, check_memory, state_bytes
 from qusim_np.shot_noise.hamiltonian import allocate_shots
 from qusim_np.shot_noise.sampling import measurement_probabilities, sample_bitstrings
 from qusim_np.vqe import (
@@ -373,6 +374,7 @@ class QuantumCircuit:
     # ------------------------------------------------------------------
     def _initial_vector(self, initial_state):
         N = 2 ** self._n
+        check_memory(state_bytes(N, 32))      # the state + one gate's output
         if initial_state is None:
             psi = np.zeros(N, dtype=complex)
             psi[0] = 1.0
@@ -399,8 +401,10 @@ class QuantumCircuit:
                 "use density_matrix() instead of statevector()"
             )
         psi = self._initial_vector(initial_state)
+        monitor = MemoryMonitor(psi.size)
         for inst in self._instructions:
             psi = apply_gate(psi, inst.matrix, inst.qubits)
+            monitor.step()
         return psi
 
     def density_matrix(self, initial_state=None):
@@ -418,6 +422,8 @@ class QuantumCircuit:
             numpy.ndarray: final density matrix, shape (2^n, 2^n)
         """
         N = 2 ** self._n
+        if self._is_noisy():
+            check_memory(state_bytes(N * N, 32))  # rho + one gate's output
         if initial_state is not None and np.ndim(initial_state) == 2:
             rho = np.array(initial_state, dtype=complex)
             if rho.shape != (N, N):
@@ -429,11 +435,13 @@ class QuantumCircuit:
                 return np.outer(psi, psi.conj())
             rho = np.outer(psi, psi.conj())
 
+        monitor = MemoryMonitor(rho.size)
         for inst in self._instructions:
             rho = apply_unitary_density(rho, inst.matrix, inst.qubits)
             if self._noise_model is not None:
                 for ops, q in self._noise_model.channels_for(inst.name, inst.qubits):
                     rho = apply_channel(rho, ops, qubit=q)
+            monitor.step()
         return rho
 
     def _trajectory(self, rng):
@@ -445,11 +453,13 @@ class QuantumCircuit:
         NoiseModel, so the unchecked branch sampler is used here.
         """
         psi = self._initial_vector(None)
+        monitor = MemoryMonitor(psi.size)
         for inst in self._instructions:
             psi = apply_gate(psi, inst.matrix, inst.qubits)
             if self._noise_model is not None:
                 for ops, q in self._noise_model.channels_for(inst.name, inst.qubits):
                     psi, _ = _sample_branch(psi, self._n, ops, q, rng)
+            monitor.step()
         return psi
 
     def trajectories(self, count, rng=None):

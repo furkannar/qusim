@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qusim-np"
-version = "1.3"
-description = "A lightweight quantum simulation package in pure NumPy: a QuantumCircuit API, matrix-free state-vector algorithms, VQE, noise models with quantum trajectories, and shot-noise estimation"
+version = "1.4"
+description = "A lightweight quantum simulation package in pure NumPy: a QuantumCircuit API, matrix-free state-vector algorithms, Shor factoring, VQE, noise models with quantum trajectories, shot-noise estimation, and RAM guards for large simulations"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
     {name = "Furkan Nar", email = "furkan_nar4185@outlook.com"},
 ]
-keywords = ["quantum", "quantum-computing", "quantum-circuit", "simulation", "state-vector", "vqe", "grover", "deutsch-jozsa", "qft", "noise-models", "quantum-trajectories", "shot-noise"]
+keywords = ["quantum", "quantum-computing", "quantum-circuit", "simulation", "state-vector", "vqe", "grover", "deutsch-jozsa", "qft", "shor", "factoring", "order-finding", "noise-models", "quantum-trajectories", "shot-noise"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -20,12 +20,15 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=2.0.0",
     "scipy>=1.11.0",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]

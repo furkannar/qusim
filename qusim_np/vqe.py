@@ -32,6 +32,7 @@ import numpy as np
 from qusim_np.config import PAULI_I, PAULI_X, PAULI_Y, PAULI_Z
 from qusim_np.gates import ry, rz, cnot
 from qusim_np.grover_search import _validate_n
+from qusim_np.resources import MemoryMonitor, check_memory, state_bytes
 
 _PAULI_MATRICES = {"I": PAULI_I, "X": PAULI_X, "Y": PAULI_Y, "Z": PAULI_Z}
 _PAULI_LABELS = "IXYZ"
@@ -129,6 +130,7 @@ def _pauli_column_values(labels):
 def _labels_to_matrix(labels):
     """Build the dense matrix of a normalized Pauli string, O(2^n) fill."""
     N = 2 ** len(labels)
+    check_memory(state_bytes(N * N))
     cols, rows, vals = _pauli_column_values(labels)
     M = np.zeros((N, N), dtype=complex)
     M[rows, cols] = vals
@@ -376,6 +378,7 @@ def hamiltonian(coefficients, pauli_strings):
         raise ValueError("all Pauli strings in a Hamiltonian must have the same length")
 
     N = 2 ** n
+    check_memory(state_bytes(N * N))
     H = np.zeros((N, N), dtype=complex)
     for alpha, labels in zip(coeffs, labels_list):
         cols, rows, vals = _pauli_column_values(labels)
@@ -467,9 +470,11 @@ def hea_state(n, theta, layers=1, entanglement="linear"):
         )
     theta = theta.reshape(layers, n, 2)
 
+    check_memory(state_bytes(2 ** n, 32))     # state + one gate's output
     state = np.zeros(2 ** n, dtype=complex)
     state[0] = 1.0
     cnot_matrix = cnot().matrix
+    monitor = MemoryMonitor(state.size)
 
     for layer in range(layers):
         for q in range(n):
@@ -482,6 +487,7 @@ def hea_state(n, theta, layers=1, entanglement="linear"):
         for c, t in pairs:
             if c != t:
                 state = apply_two_qubit(state, cnot_matrix, c, t)
+        monitor.step()
 
     return state
 

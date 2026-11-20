@@ -21,6 +21,7 @@ import numpy as np
 from qusim_np.grover_search import (
     _validate_n, apply_hadamard_transform, initialize_uniform_superposition
 )
+from qusim_np.resources import check_memory, state_bytes
 
 
 def _evaluate_f(f, N):
@@ -59,6 +60,7 @@ def deutsch_jozsa_oracle(n, f):
     """
     _validate_n(n)
     N = 2 ** n
+    check_memory(state_bytes(N * N))
     values = _evaluate_f(f, N)
     phases = np.array([1 - 2 * v for v in values])  # +1 if f=0, -1 if f=1
     return np.diag(phases).astype(complex)
@@ -86,6 +88,8 @@ def deutsch_jozsa(n, f):
     """
     _validate_n(n)
     N = 2 ** n
+    # f(x) is evaluated into a Python list (~36 bytes per entry) next to the state
+    check_memory(state_bytes(N, 64))
 
     # Step 1: uniform superposition
     state = initialize_uniform_superposition(n)

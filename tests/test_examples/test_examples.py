@@ -7,7 +7,7 @@ import runpy
 
 import pytest
 
-EXAMPLES = sorted((pathlib.Path(__file__).parent.parent / "examples").glob("*.py"))
+EXAMPLES = sorted((pathlib.Path(__file__).parents[2] / "examples").glob("*.py"))
 
 
 def test_examples_exist():
